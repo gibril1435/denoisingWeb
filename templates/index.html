@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive Median Filter - Image Denoising Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1d29;
+            --bg-secondary: #252936;
+            --bg-card: #2d3142;
+            --text-primary: #ffffff;
+            --text-secondary: #b8bcc8;
+            --accent-blue: #4a9eff;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --border-color: #3d4154;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .navbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            color: var(--text-primary) !important;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .navbar-brand i {
+            color: var(--accent-blue);
+        }
+
+        .nav-link {
+            color: var(--text-secondary) !important;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--accent-blue) !important;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            text-align: center;
+            padding: 4rem 1rem 3rem;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-description {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 3rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem 4rem;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        @media (max-width: 992px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Upload Card */
+        .upload-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: var(--bg-secondary);
+            position: relative;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-blue);
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(74, 158, 255, 0.1);
+        }
+
+        .upload-area.has-image {
+            padding: 1rem;
+            border: 2px solid var(--accent-blue);
+            background: var(--bg-secondary);
+            cursor: default;
+        }
+
+        .upload-area.has-image:hover {
+            background: var(--bg-secondary);
+        }
+
+        .image-preview {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .image-preview.active {
+            display: block;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-preview-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border-radius: 8px;
+        }
+
+        .upload-area.has-image:hover .image-preview-overlay {
+            opacity: 1;
+        }
+
+        .btn-change-photo {
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-change-photo:hover {
+            background: var(--accent-purple);
+            transform: translateY(-2px);
+        }
+
+        .upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-content.hidden {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-control, .form-select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.75rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: var(--bg-secondary);
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(74, 158, 255, 0.3);
+        }
+
+        .btn-outline-primary {
+            border: 2px solid var(--accent-blue);
+            color: var(--accent-blue);
+            background: transparent;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--accent-blue);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Results Section */
+        .results-section {
+            margin-top: 3rem;
+        }
+
+        .results-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .result-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-blue);
+        }
+
+        .result-card.featured {
+            border: 2px solid var(--accent-green);
+            grid-column: span 2;
+        }
+
+        .result-header {
+            padding: 1rem;
+            font-weight: 600;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-header.original {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .result-header.noisy {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .result-header.box {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .result-header.smf {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .result-header.amf {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .result-body {
+            padding: 1rem;
+        }
+
+        .result-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .result-stats {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .stat-value.psnr {
+            color: var(--accent-green);
+        }
+
+        .badge-feature {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 1px solid var(--accent-green);
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 29, 41, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--accent-blue);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error Message */
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Terms */
+        .terms-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .terms-text a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .terms-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Download Button */
+        .btn-download {
+            background: var(--accent-green);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-download:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .download-all-btn {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+            border: none;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 2rem auto;
+            display: block;
+        }
+
+        .download-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(74, 158, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p>Processing your image...</p>
+            </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-image"></i>
+                Adaptive Median Filter
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Image Denoising</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="bi bi-moon"></i></a>
+                    </li>
+                </ul>
+            </div>
+            </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1 class="hero-title">Free Online Image Denoising Tool</h1>
+        <p class="hero-description">
+            Removing salt-and-pepper noise from your images in a single click. 
+            Compare multiple denoising methods with quality metrics!
+        </p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-grid">
+            <!-- Results Display (Left) -->
+            <div id="resultsContainer" style="display: none;">
+                <div class="results-section">
+                    <h2 class="results-title">Filter Comparison Results</h2>
+                    <button class="download-all-btn" id="downloadAllBtn">
+                        <i class="bi bi-download"></i> Download All Images
+                    </button>
+                    <div class="comparison-grid" id="resultsGrid">
+                        <!-- Results will be inserted here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div id="emptyState" style="display: flex; align-items: center; justify-content: center; min-height: 400px; color: var(--text-secondary);">
+                <div class="text-center">
+                    <i class="bi bi-image" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>Upload an image to see comparison results</p>
+                </div>
+            </div>
+
+            <!-- Upload Form (Right) -->
+            <div class="upload-card">
+                <form method="post" enctype="multipart/form-data" id="processForm">
+                    {% if error %}
+                    <div class="alert alert-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <div class="upload-area" id="uploadArea">
+                        <!-- Upload Content (shown when no image) -->
+                        <div class="upload-content" id="uploadContent">
+                            <i class="bi bi-cloud-upload upload-icon"></i>
+                            <div class="upload-text">Upload to process your image</div>
+                            <div class="upload-hint">Maximum 10MB, PNG, JPG, JPEG, TIFF, BMP</div>
+                            <input type="file" class="form-control mt-3" id="file" name="file" 
+                                   accept="image/png,image/jpeg,image/jpg,image/tiff,image/bmp" required 
+                                   style="display: none;">
+                            <button type="button" class="btn btn-outline-primary mt-2" onclick="document.getElementById('file').click()">
+                                <i class="bi bi-folder2-open"></i> Choose File
+                            </button>
+                            <div id="fileName" class="mt-2 text-muted small"></div>
+                        </div>
+
+                        <!-- Image Preview (shown when image is selected) -->
+                        <div class="image-preview" id="imagePreview">
+                            <img id="previewImage" src="" alt="Preview">
+                            <div class="image-preview-overlay">
+                                <button type="button" class="btn-change-photo" id="changePhotoBtn">
+                                    <i class="bi bi-arrow-clockwise"></i> Another Photo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label for="density" class="form-label">
+                            <i class="bi bi-sliders"></i> Noise Density
+                        </label>
+                        <select class="form-select" name="density" id="density">
+                            <option value="0.1">10%</option>
+                            <option value="0.3" selected>30%</option>
+                            <option value="0.5">50%</option>
+                            <option value="0.7">70%</option>
+                            <option value="0.9">90%</option>
+                        </select>
+                        <small class="text-muted">Select the amount of salt-and-pepper noise to add</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-4">
+                        <i class="bi bi-play-fill"></i> Process Image
+                    </button>
+
+                    <div class="terms-text">
+                        By uploading an image you agree to our 
+                        <a href="#">Terms of Use</a> and <a href="#">Privacy Policy</a>.
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // File input handling
+        const fileInput = document.getElementById('file');
+        const fileName = document.getElementById('fileName');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadContent = document.getElementById('uploadContent');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+        const changePhotoBtn = document.getElementById('changePhotoBtn');
+        const processForm = document.getElementById('processForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        let currentResultsData = null; // Store current results for download all
+
+        function showImagePreview(file) {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    uploadContent.classList.add('hidden');
+                    imagePreview.classList.add('active');
+                    uploadArea.classList.add('has-image');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function resetUploadArea() {
+            fileInput.value = '';
+            uploadContent.classList.remove('hidden');
+            imagePreview.classList.remove('active');
+            uploadArea.classList.remove('has-image');
+            previewImage.src = '';
+            fileName.textContent = '';
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                fileName.textContent = 'Selected: ' + file.name;
+                fileName.style.color = 'var(--accent-blue)';
+                showImagePreview(file);
+            }
+        });
+
+        // Change photo button
+        changePhotoBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            resetUploadArea();
+            setTimeout(() => {
+                fileInput.click();
+            }, 100);
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (!uploadArea.classList.contains('has-image')) {
+                uploadArea.classList.add('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('dragleave', function() {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = 'Selected: ' + file.name;
+                fileName.style.color = 'var(--accent-blue)';
+                showImagePreview(file);
+            }
+        });
+
+        uploadArea.addEventListener('click', function(e) {
+            // Only trigger file input if clicking on upload area (not on preview)
+            if (!uploadArea.classList.contains('has-image') && !e.target.closest('.image-preview-overlay')) {
+                fileInput.click();
+            }
+        });
+
+        // Form submission with AJAX
+        processForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (fileInput.files.length === 0) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const formData = new FormData(processForm);
+            loadingOverlay.classList.add('active');
+
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingOverlay.classList.remove('active');
+                
+                if (data.success) {
+                    currentResultsData = data; // Store for download all button
+                    displayResults(data);
+                    // Auto-download all images
+                    downloadAllImages(data.images);
+                } else {
+                    alert('Error processing image: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                loadingOverlay.classList.remove('active');
+                console.error('Error:', error);
+                alert('Error processing image. Please try again.');
+            });
+        });
+
+        function displayResults(data) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            const emptyState = document.getElementById('emptyState');
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            emptyState.style.display = 'none';
+            resultsContainer.style.display = 'block';
+            
+            // Clear previous results
+            resultsGrid.innerHTML = '';
+            
+            const images = data.images;
+            const stats = data.stats;
+            const density = data.density;
+            
+            // Helper function to create result card
+            function createResultCard(key, headerClass, title, showStats = false, isFeatured = false) {
+                const card = document.createElement('div');
+                card.className = `result-card ${isFeatured ? 'featured' : ''}`;
+                
+                const statsHtml = showStats ? `
+                    <div class="result-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">PSNR</span>
+                            <span class="stat-value psnr">${stats[key]['psnr']} dB</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">MSE</span>
+                            <span class="stat-value">${stats[key]['mse']}</span>
+                        </div>
+                    </div>
+                ` : '';
+                
+                const badgeHtml = isFeatured ? `
+                    <div class="badge-feature">
+                        <i class="bi bi-check-circle"></i> Best detail preservation & edge retention
+                    </div>
+                ` : '';
+                
+                const densityHtml = key === 'noisy' ? `
+                    <div class="result-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Noise Density</span>
+                            <span class="stat-value">${Math.round(density * 100)}%</span>
+                        </div>
+                    </div>
+                ` : '';
+                
+                card.innerHTML = `
+                    <div class="result-header ${headerClass}">${title}</div>
+                    <div class="result-body">
+                        <img src="data:image/png;base64,${images[key].data}" 
+                             alt="${title}" class="result-image" data-image-key="${key}">
+                        ${badgeHtml}
+                        ${statsHtml}
+                        ${densityHtml}
+                        <button class="btn-download" onclick="downloadImage('${key}', '${images[key].filename}', '${images[key].data}')">
+                            <i class="bi bi-download"></i> Download
+                        </button>
+                    </div>
+                `;
+                
+                return card;
+            }
+            
+            // Add cards
+            resultsGrid.appendChild(createResultCard('original', 'original', 'Original'));
+            resultsGrid.appendChild(createResultCard('noisy', 'noisy', `Noisy Input (${Math.round(density * 100)}%)`));
+            resultsGrid.appendChild(createResultCard('box', 'box', 'Box Filter', true));
+            resultsGrid.appendChild(createResultCard('smf', 'smf', 'Standard Median', true));
+            resultsGrid.appendChild(createResultCard('amf', 'amf', 'AMF (Proposed Method) ⭐', true, true));
+            
+            // Attach download all button
+            attachDownloadAllButton();
+            
+            // Scroll to results
+            setTimeout(() => {
+                resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function downloadImage(key, filename, base64Data) {
+            const link = document.createElement('a');
+            link.href = 'data:image/png;base64,' + base64Data;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadAllImages(images) {
+            // Download all images with a small delay between each
+            const imageKeys = ['original', 'noisy', 'box', 'smf', 'amf'];
+            imageKeys.forEach((key, index) => {
+                setTimeout(() => {
+                    downloadImage(key, images[key].filename, images[key].data);
+                }, index * 300); // 300ms delay between downloads
+            });
+        }
+
+        // Download all button (attach after results are displayed)
+        function attachDownloadAllButton() {
+            const downloadAllBtn = document.getElementById('downloadAllBtn');
+            if (downloadAllBtn) {
+                downloadAllBtn.onclick = function() {
+                    if (currentResultsData && currentResultsData.images) {
+                        downloadAllImages(currentResultsData.images);
+                    }
+                };
+            }
+        }
+
+        // Scroll to results if they exist
+        window.addEventListener('load', function() {
+            const resultsSection = document.querySelector('.results-section');
+            if (resultsSection) {
+                setTimeout(function() {
+                    resultsSection.scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }, 100);
+            }
+        });
+    </script>
+
+</body>
+</html>
